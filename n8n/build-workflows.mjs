@@ -245,7 +245,7 @@ return $input.all().map(({ json: j }) => {
     status: j.status,
     channel: j.channel,
     n8nExecutionId: String($execution.id),
-    detail: j.detail ?? (j.subject + ' → ' + j.to),
+    detail: j.detail ?? j.subject,          // no recipient address: the loan's other party can see activity
   });
   return { json: signForConvex('POST', path, rawBody) };
 });

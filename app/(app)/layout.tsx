@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { ClientUserButton } from "@/components/ClientUserButton";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Logo } from "@/components/Logo";
@@ -63,7 +63,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 Admin
               </span>
             )}
-            <UserButton />
+            <ClientUserButton />
           </div>
         </div>
       </header>

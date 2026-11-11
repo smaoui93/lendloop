@@ -44,7 +44,7 @@ Browser ──Clerk JWT──▶ Convex queries/mutations ── RBAC enforced h
 | `convex/automation.ts` | Outbox, signed delivery with retries/backoff, overdue query, idempotent `recordEvent` |
 | `convex/http.ts` | Signed inbound endpoints for n8n |
 | `convex/lib/hmac.ts` | HMAC-SHA256 sign/verify (Web Crypto, constant-time compare, 5-minute replay window) |
-| `convex/lendloop.test.ts` | 16 tests covering RBAC, transitions, signatures, retries, idempotency |
+| `convex/lendloop.test.ts` | 17 tests covering RBAC, transitions, signatures, retries, idempotency |
 | `app/`, `components/` | UI (`proxy.ts` is Next 16's renamed middleware) |
 | `n8n/build-workflows.mjs` → `n8n/workflows/*.json` | Source and generated n8n workflows |
 | `n8n/docker-compose.yml` | Self-hosted n8n |
@@ -135,8 +135,6 @@ Convex env vars are set with `npx convex env set NAME value`. Convex functions d
     In n8n, they also fail the run, so the error workflow fires.
   - A captured request could be replayed inside that 5-minute window. Every write is idempotent, so a replay
     changes nothing, but production should also reject reused event IDs (see below).
-- **Minimal payloads.** The webhook carries `eventId`, `eventType`, `loanId`, `toolName`, the dates, and the
-  recipient's name and email. Nothing else.
 - **No secrets in code or workflow JSON.** Code nodes read `$env.*`, set from `n8n/.env`, which is gitignored.
   Optional Discord nodes ship disabled. Check with:
   `grep -rniE "sha256=[0-9a-f]{8}|[0-9a-f]{40,}" n8n/workflows || echo clean`.
@@ -151,10 +149,30 @@ Convex env vars are set with `npx convex env set NAME value`. Convex functions d
   - Any run that fails anyway fires **Error Handler**, which posts to `/api/automation-errors`.
   - All of this shows up in **Admin → Automation** and on each loan card.
 
+## Data minimization
+
+Each party gets only the fields it needs for its job.
+
+| Who | Sees | Does not see |
+|---|---|---|
+| Visitor (signed out) | Tool name and category (`tools.listPublic`) | Owners, descriptions, availability, loans |
+| Signed-in user | Tools with owner display name and Trusted badge; loans they are part of, with the other party's name | Any email address, other people's loans |
+| Lender / borrower on a loan | Automation status and time ("Notification delivered 2 days ago") | The free-text `detail` n8n writes back (it can name a recipient or contain an error message) |
+| Admin | All loans, user emails, automation details and errors | Nothing hidden: this role exists to moderate and debug |
+| n8n | Per event: `eventId`, `eventType`, `loanId`, `toolName`, dates, recipient name and email. Per overdue loan: the same plus `daysOverdue` | User IDs, roles, Clerk data, descriptions, the other party's contact details |
+
+Further choices:
+- The "Verify signature" node keeps only those fields after verification, and n8n write-backs carry
+  a status and a short subject such as "Request approved", never a recipient address.
+- `users.me` returns name, role and Trusted status, not the email.
+- Error reports to `/api/automation-errors` contain the workflow, node, message and execution ID, not the payload.
+- Clerk stays the system of record for identity. Convex stores only the name and email it needs to
+  address notifications.
+
 ## Testing
 
 ```bash
-npx vitest run       # 16 backend tests (convex-test)
+npx vitest run       # 17 backend tests (convex-test)
 npx tsc --noEmit && npm run lint && npm run build
 ```
 

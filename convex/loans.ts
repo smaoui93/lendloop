@@ -24,8 +24,12 @@ const TRANSITIONS: Record<
   markReturned: { from: "approved", to: "returned", actor: "lender", event: "loan.returned" },
 };
 
-/** Recent automation activity for a loan (bonus UI). */
-export async function activityFor(ctx: QueryCtx, loanId: Id<"loans">) {
+/**
+ * Recent automation activity for a loan (bonus UI). Both parties see it, so
+ * the free-text `detail` (written by n8n, may mention a recipient or an error
+ * message) is returned to admins only.
+ */
+export async function activityFor(ctx: QueryCtx, loanId: Id<"loans">, includeDetail: boolean) {
   const events = await ctx.db
     .query("automationEvents")
     .withIndex("by_loan", (q) => q.eq("loanId", loanId))
@@ -49,7 +53,10 @@ export async function activityFor(ctx: QueryCtx, loanId: Id<"loans">) {
       at: d._creationTime,
       detail: `Webhook delivery failed: ${d.lastError ?? "unknown error"}`,
     }));
-  return [...fromEvents, ...failedDeliveries].sort((a, b) => b.at - a.at).slice(0, 5);
+  return [...fromEvents, ...failedDeliveries]
+    .sort((a, b) => b.at - a.at)
+    .slice(0, 5)
+    .map((a) => (includeDetail ? a : { ...a, detail: undefined }));
 }
 
 async function enrich(ctx: QueryCtx, loan: Doc<"loans">, viewer: "borrower" | "lender" | "admin") {
@@ -73,7 +80,7 @@ async function enrich(ctx: QueryCtx, loan: Doc<"loans">, viewer: "borrower" | "l
       viewer === "lender"
         ? null
         : { name: lender?.name ?? "Neighbor", trustedLender: lender?.trustedLender ?? false },
-    activity: await activityFor(ctx, loan._id),
+    activity: await activityFor(ctx, loan._id, viewer === "admin"),
   };
 }
 export type EnrichedLoan = Awaited<ReturnType<typeof enrich>>;

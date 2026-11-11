@@ -257,6 +257,28 @@ describe("n8n -> Convex HTTP endpoints", () => {
     expect(loan.activity[0]).toMatchObject({ kind: "overdue_reminder", status: "sent" });
   });
 
+  test("automation detail is shown to admins only, never to the loan parties", async () => {
+    const { t, alice, bob, admin, toolId } = await setup();
+    const loanId = await bob.mutation(api.loans.request, { toolId, startDate: day(1), endDate: day(2) });
+    const body = JSON.stringify({
+      idempotencyKey: "notify:e1",
+      loanId,
+      kind: "request_notification",
+      status: "sent",
+      channel: "mock",
+      detail: "New borrow request → alice@example.com",
+    });
+    await signedFetch(t, "POST", "/api/automation-events", body);
+
+    const [asBorrower] = await bob.query(api.loans.listMine, {});
+    const [asLender] = await alice.query(api.loans.listIncoming, {});
+    const [asAdmin] = await admin.query(api.admin.listAllLoans, {});
+    expect(asBorrower.activity[0]).toMatchObject({ kind: "request_notification", status: "sent" });
+    expect(asBorrower.activity[0].detail).toBeUndefined();
+    expect(asLender.activity[0].detail).toBeUndefined();
+    expect(asAdmin.activity[0].detail).toContain("alice@example.com");
+  });
+
   test("a failed reminder is upgraded in place when a retry succeeds", async () => {
     const { t, alice, bob, toolId } = await setup();
     const loanId = await bob.mutation(api.loans.request, { toolId, startDate: day(1), endDate: day(2) });
