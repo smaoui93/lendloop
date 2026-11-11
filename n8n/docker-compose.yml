@@ -1,0 +1,28 @@
+# Self-hosted n8n for LendLoop.
+#   cp n8n/.env.example n8n/.env   # fill in secrets (never commit .env)
+#   docker compose -f n8n/docker-compose.yml up -d
+#   docker compose -f n8n/docker-compose.yml exec n8n n8n import:workflow --separate --input=/workflows
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION:-2.47.3}
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    env_file: .env
+    environment:
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-UTC}
+      - TZ=${GENERIC_TIMEZONE:-UTC}
+      # Code nodes need `crypto` for HMAC and $env for secrets.
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_DIAGNOSTICS_ENABLED=false
+    extra_hosts:
+      # Lets the container reach a Convex backend running on the host (local dev).
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./workflows:/workflows:ro
+
+volumes:
+  n8n_data:
