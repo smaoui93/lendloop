@@ -1,0 +1,134 @@
+{
+  "id": "lendloopErrorWf1",
+  "name": "LendLoop – Error Handler",
+  "active": false,
+  "nodes": [
+    {
+      "id": "00000000-0000-4000-8000-000000000201",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000202",
+      "name": "Format + sign",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const crypto = require('crypto');\nfunction signForConvex(method, path, rawBody) {\n  const secret = $env.LENDLOOP_INBOUND_SECRET;\n  const base = ($env.LENDLOOP_CONVEX_SITE_URL || '').replace(/\\/$/, '');\n  if (!secret) throw new Error('LENDLOOP_INBOUND_SECRET is not set');\n  if (!base) throw new Error('LENDLOOP_CONVEX_SITE_URL is not set');\n  const ts = Math.floor(Date.now() / 1000).toString();\n  const signature = 'sha256=' + crypto\n    .createHmac('sha256', secret)\n    .update(ts + '.' + method + '.' + path + '.' + rawBody)\n    .digest('hex');\n  return { url: base + path, ts, signature, rawBody };\n}\n\nconst e = $input.first().json;\nconst executionId = String(e.execution?.id ?? ('trigger-' + Date.now()));\nconst report = {\n  executionId,\n  workflowName: e.workflow?.name ?? 'unknown',\n  nodeName: e.execution?.lastNodeExecuted ?? e.trigger?.error?.node?.name,\n  message: e.execution?.error?.message ?? e.trigger?.error?.message ?? 'unknown error',\n  executionUrl: e.execution?.url,\n};\nconsole.error('[LendLoop error] %s › %s: %s (%s)', report.workflowName, report.nodeName, report.message, report.executionUrl);\nreturn [{ json: { ...signForConvex('POST', '/api/automation-errors', JSON.stringify(report)), report } }];"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000203",
+      "name": "Report to Convex",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-LendLoop-Timestamp",
+              "value": "={{ $json.ts }}"
+            },
+            {
+              "name": "X-LendLoop-Signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.rawBody }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000204",
+      "name": "Discord alert (optional)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        120
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"content\": \"⚠️ LendLoop workflow failed: **\" + $json.report.workflowName + \"** › \" + $json.report.nodeName + \" — \" + $json.report.message } }}",
+        "options": {}
+      },
+      "disabled": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format + sign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format + sign": {
+      "main": [
+        [
+          {
+            "node": "Report to Convex",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Discord alert (optional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

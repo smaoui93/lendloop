@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // All data is live via Convex on the client, so Cache Components are not used.
   turbopack: {
     rules: {
       "*.css": {

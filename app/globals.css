@@ -1,26 +1,108 @@
 @import "tailwindcss";
 
+/* LendLoop tokens: original emerald/stone palette, with the new layout system. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fafaf9;
+  --foreground: #1c1917;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-paper: #fafaf9;
+  --color-ink: #1c1917;
+  --color-ink-soft: #292524;
+  --color-body: #57534e;
+  --color-muted: #78716c;
+  --color-soft: #44403c;
+  --color-line: #e7e5e4;
+  --color-line-strong: #d6d3d1;
+  --color-divider: #f5f5f4;
+  --color-chip: #f5f5f4;
+  --color-segment: #e7e5e4;
+  --color-segment-off: #d6d3d1;
+  --color-on-dark: #d6d3d1;
+
+  --color-brand: #047857;
+  --color-brand-dark: #065f46;
+  --color-brand-soft: #d1fae5;
+  --color-brand-line: #a7f3d0;
+  --color-mint: #6ee7b7;
+  --color-mint-ink: #022c22;
+
+  --color-info-bg: #e0f2fe;
+  --color-info: #075985;
+  --color-warn-bg: #fef3c7;
+  --color-warn: #92400e;
+  --color-warn-dot: #d97706;
+  --color-danger-bg: #fee2e2;
+  --color-danger: #b91c1c;
+  --color-danger-line: #fecaca;
+
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-geist-sans), system-ui, sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+/* In the base layer so utility classes (e.g. text-white on link buttons) win. */
+@layer base {
+  a {
+    color: var(--color-brand);
+  }
+  a:hover {
+    color: var(--color-brand-dark);
+  }
+}
+
+@layer components {
+  .font-display {
+    font-family: var(--font-display);
+  }
+  .btn {
+    @apply inline-flex min-h-10 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3.5 text-sm font-medium no-underline transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand;
+  }
+  .btn-primary {
+    @apply bg-brand text-white hover:bg-brand-dark hover:text-white;
+  }
+  .btn-dark {
+    @apply bg-ink text-white hover:bg-ink-soft hover:text-white;
+  }
+  .btn-secondary {
+    @apply border border-line-strong bg-white text-ink hover:bg-chip hover:text-ink;
+  }
+  .btn-danger {
+    @apply border border-danger-line bg-white text-danger hover:bg-danger-bg hover:text-danger;
+  }
+  .btn-icon {
+    @apply min-h-10 w-10 px-0;
+  }
+  .card {
+    @apply rounded-xl border border-line bg-white p-4 shadow-sm;
+  }
+  .input {
+    @apply h-10 w-full rounded-lg border border-line-strong bg-white px-3 text-[15px] text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20;
+  }
+  textarea.input {
+    @apply h-auto py-2.5;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium tracking-wide text-muted uppercase;
+  }
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.06em] text-muted;
+  }
+  .badge {
+    @apply inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+  .page-title {
+    @apply text-3xl font-semibold tracking-tight text-ink;
+  }
 }
