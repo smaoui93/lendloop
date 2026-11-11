@@ -163,6 +163,13 @@ Manual end-to-end test, using local Convex and n8n in Docker:
    card shows "Notification sent just now".
 2. A approves the loan. Run `npx convex run seed:backdateLoan '{"loanId":"<id>","daysAgo":2}'`, then in n8n open
    **Overdue Reminders** and click **Execute workflow**. The card shows "Reminder sent just now", and a second run adds nothing.
+   To run it from the CLI while n8n is up, give the CLI process its own ports, or it collides with the running
+   instance's task broker on 5679:
+   ```bash
+   docker compose -f n8n/docker-compose.yml exec -e N8N_RUNNERS_BROKER_PORT=5690 -e N8N_PORT=5691 \
+     n8n n8n execute --id lendloopOverdue1
+   ```
+   (Git Bash on Windows: prefix with `MSYS_NO_PATHCONV=1`.)
 3. Send a forged webhook. You get a 401, and a `workflow_error` appears under Admin → Automation.
 4. Stop n8n and create a request. Admin → Automation shows a delivery retrying, and it is delivered once n8n is back.
    A borrower email ending in `@fail.test` simulates a failed reminder send.
